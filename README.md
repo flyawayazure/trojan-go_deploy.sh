@@ -38,7 +38,7 @@
 
 * 特别感谢
 
-  [v2ray-tcp-tlls-web](https://github.com/phlinhng/v2ray-tcp-tls-web/blob/vless/src/v2gun.sh)的作者[phlinhng](https://github.com/phlinhng)整理了伪装网站模版让我可以偷来用，并且脚本内容我也多有参（照）考（抄）。
+  [v2ray-tcp-tls-web](https://github.com/phlinhng/v2ray-tcp-tls-web/blob/vless/src/v2gun.sh)的作者[phlinhng](https://github.com/phlinhng)整理了伪装网站模版让我可以偷来用，并且脚本内容我也多有参（照）考（抄）。
 
 * 其他
 
