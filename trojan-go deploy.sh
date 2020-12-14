@@ -1,24 +1,22 @@
 #!/bin/bash
 #网页模版由 https://github.com/phlinhng 大神整理。其他细节也多有参考其脚本 https://github.com/phlinhng/v2ray-tcp-tls-web/blob/vless/src/v2gun.sh
 export LC_ALL=C
-export LANG=en_US
-export LANGUAGE=en_US.UTF-8
-apt -y update
-apt -y upgrade
-apt install -y wget curl socat jq unzip nginx
+#export LANG=en_US
+#export LANGUAGE=en_US.UTF-8
+apt -y update && apt -y upgrade && apt install -y curl socat jq unzip nginx
 #读取域名
 read -p "Please enter your domain: " domain
 
-#获取最新版triojan-go
+#获取最新版trojan-go
 echo "Fetching latest version of Trojan-Go"
 latest_version="$(curl -s "https://api.github.com/repos/p4gefau1t/trojan-go/releases" | jq '.[0].tag_name' --raw-output)"
-wget https://github.com/p4gefau1t/trojan-go/releases/download/${latest_version}/trojan-go-linux-amd64.zip
+curl -GLO https://github.com/p4gefau1t/trojan-go/releases/download/${latest_version}/trojan-go-linux-amd64.zip
 unzip trojan-go-linux-amd64.zip
 rm -f trojan-go-linux-amd64.zip
 
 mv ./trojan-go /usr/local/bin/trojan-go &&chmod +x /usr/local/bin/trojan-go
-mv ./geoip.dat /usr/share/geoip.dat
-mv ./geosite.dat /usr/share/geosite.dat
+mv ./geoip.dat /usr/share/trojan-go/geoip.dat
+mv ./geosite.dat /usr/share/trojan-go/geosite.dat
 
 mkdir /etc/trojan-go && chmod 755 /etc/trojan-go
 
@@ -46,11 +44,11 @@ chmod 644 /etc/trojan-go/ssl/fullchain-cert.pem
 #建立伪装网站
 echo "Deploying dummy website for anti-probing"
 template="$(curl -s https://raw.githubusercontent.com/phlinhng/web-templates/master/list.txt | shuf -n  1)"
-wget -q https://raw.githubusercontent.com/phlinhng/web-templates/master/${template} -O /tmp/template.zip
+curl https://raw.githubusercontent.com/phlinhng/web-templates/master/${template} -o /tmp/template.zip
 mkdir -p /var/www/html
 unzip -q /tmp/template.zip -d /var/www/html
 
-wget -q https://raw.githubusercontent.com/phlinhng/v2ray-tcp-tls-web/${branch}/custom/robots.txt -O /var/www/html/robots.txt 
+curl https://raw.githubusercontent.com/phlinhng/v2ray-tcp-tls-web/${branch}/custom/robots.txt -o /var/www/html/robots.txt 
 cat > "/var/wwww/html/400.html" <<-EOF
 <html>
 <head></head>
@@ -71,8 +69,7 @@ EOF
 systemctl restart nginx
 
 #设置trojan-go.service
-groupadd trojan-go
-useradd -g trojan-go -s /usr/sbin/nologin trojan-go
+useradd --inactive 0 --no-create-home --uid 211 --user-group --shell /usr/bin/nologin --system trojan-go
 
 cat > "/etc/systemd/system/trojan-go.service" <<-EOF
 [Unit]
@@ -118,8 +115,8 @@ router:
   enabled: true
   block:
     - 'geoip:private'
-  geoip: /usr/share/geoip.dat
-  geosite: /usr/share/geosite.dat
+  geoip: /usr/share/trojan-go/geoip.dat
+  geosite: /usr/share/trojan-go/geosite.dat
 websocket:
   enabled: true
   path: $ws_path
@@ -145,8 +142,8 @@ router:
   enabled: true
   block:
     - 'geoip:private'
-  geoip: /usr/share/geoip.dat
-  geosite: /usr/share/geosite.dat
+  geoip: /usr/share/trojan-go/geoip.dat
+  geosite: /usr/share/trojan-go/geosite.dat
 EOF
 fi
 
@@ -155,9 +152,14 @@ systemctl start trojan-go
 echo "Trojan-Go has been deployed in your server"
 
 #开启bbr
-echo "enable bbr now"
-echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+if sysctl net.ipv4.tcp_available_congestion_control | grep bbr &>/dev/null; then
+    echo "enable bbr now"
+    # curl https://raw.githubusercontent.com/unknowndev233/my_etc-/master/Arch/etc/sysctl.d/60-enable-tcp_bbr.conf -o /etc/sysctl.d/60-enable-tcp_bbr.conf
+    echo "net.core.default_qdisc=cake" >> /etc/sysctl.d/60-enable-tcp_bbr.conf
+    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.d/60-enable-tcp_bbr.conf
+else
+    echo "Not support bbr" >&2
+fi
 
 #显示分享链接
 if ["$yn"="Y"] || ["$yn"="y"];then
